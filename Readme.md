@@ -31,7 +31,7 @@ Go to the link `http://192.168.172.26:8000/` and sign in  with your username and
 ### Creating a Notebook
 Once you are logged in, you will see a page like this:
 
-!['jupyter-lab'](./images/jupyter-lab.png)
+![alt text](images/homepageR.png)
 
 This is called **Launcher**.The left pane is the File Browser, it is the area where you will see all you files and folders present in your account. You can make use of ***New Folder (Green arrow)***, ***Upload Files (Red arrow)*** buttons situated right below ***Run Menu*** as shown in below image.
 
@@ -227,7 +227,7 @@ Once you create a session spark master will ***treat it as a job and assigns res
 ```python
 sparkR.session.stop()
 ```
-**It is recommended that you restart the kernel once you stop the session before starting a new session by clicking restart kernel situtated right of stop button (or) from kernel menu, as it clears all the cached variables.**
+**It is highly recommended that you restart the kernel once you stop the session before starting a new session by clicking restart kernel situtated right of stop button (or) from kernel menu, as it clears all the cached variables.**
 
 ### Logs
 
