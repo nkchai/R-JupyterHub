@@ -1,6 +1,6 @@
 # Jupyter Notebook with Spark tutorial
 
-***Note: Some images may differ from actual JupyterHub, but in the functionality in the images does not differ.***
+***Note: Some images may differ from actual JupyterHub, but the functionality in the images does not differ.***
 
 ### Your credentials
 
