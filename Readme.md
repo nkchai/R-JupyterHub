@@ -92,13 +92,14 @@ The main use of this section in this case is to ***clone and manage GitHub Repo'
 
 For more information on cloning your repo [click here](https://github.com/illinoistech-itm/jhajek/tree/master/itmd-521/git-tutorial).
 
-### Installing Python libraries
+### Installing R libraries
 
-The jupyter notebook generated is like any other jupyter notebook, you can install any extenal libraries with `pip`. Example:
+The Jupyter notebook generated is like any other Jupyter notebook, you can install any external libraries with `install.packages`. Example:
 
+```R
+install.packages("dplyr")
 ```
-pip install pandas
-```
+
 > **Note:** Only spark jobs will be sent to the spark cluster, any code other than spark will be run on local compute.
 
 ### Extensions
@@ -224,7 +225,7 @@ Now, you can make use of the `SparkSession` object created in this case `spark`,
 
 Once you create a session spark master will ***treat it as a job and assigns resources***. You need to stop the session as shown below to create a new session or once your job is completed.
 
-```python
+```R
 sparkR.session.stop()
 ```
 **It is highly recommended that you restart the kernel once you stop the session before starting a new session by clicking restart kernel situtated right of stop button (or) from kernel menu, as it clears all the cached variables.**
@@ -233,60 +234,50 @@ sparkR.session.stop()
 
 The default log level is "WARN".If you want more clearer logs as seen in terminal, then after creating the session run the below lines in a new cell.
 
-```python
-sc = spark.sparkContext
-sc.setLogLevel("INFO")
+```R
+sc <- sparkR.session()
+setLogLevel(sc, "INFO")
 ```
 
 ### Reading From MinIO
 
-The below code snipped is a sample pyspark code that the will read csv file 50.txt and do some transformations stored as splitDF
+The below code snipped is a sample pyspark code that the will read parquet file 20.parquet 
 
-```python
-from pyspark.sql.types import *
-from pyspark.sql.functions import *
+```R
+# file path in minio
+minio_parquet_path <- "s3a://mkasa1/output/20.parquet"
 
+# Read Parquet file from MinIO
+tryCatch({
+  # Load the Parquet file into a DataFrame
+  df <- read.df(minio_parquet_path, source = "parquet")
+  
+  # Display the schema and a few rows for validation (optional)
+  printSchema(df)
+  showDF(df, numRows = 5)
+}, error = function(e) {
+  cat("Error: Unable to read Parquet file from MinIO. Exiting...\n")
+  stop(e)
+})
 
-df = spark.read.csv('s3a://itmd521/50.txt')
-
-splitDF = df.withColumn('WeatherStation', df['_c0'].substr(5, 6)) \
-.withColumn('WBAN', df['_c0'].substr(11, 5)) \
-.withColumn('ObservationDate',to_date(df['_c0'].substr(16,8), 'yyyyMMdd')) \
-.withColumn('ObservationHour', df['_c0'].substr(24, 4).cast(IntegerType())) \
-.withColumn('Latitude', df['_c0'].substr(29, 6).cast('float') / 1000) \
-.withColumn('Longitude', df['_c0'].substr(35, 7).cast('float') / 1000) \
-.withColumn('Elevation', df['_c0'].substr(47, 5).cast(IntegerType())) \
-.withColumn('WindDirection', df['_c0'].substr(61, 3).cast(IntegerType())) \
-.withColumn('WDQualityCode', df['_c0'].substr(64, 1).cast(IntegerType())) \
-.withColumn('SkyCeilingHeight', df['_c0'].substr(71, 5).cast(IntegerType())) \
-.withColumn('SCQualityCode', df['_c0'].substr(76, 1).cast(IntegerType())) \
-.withColumn('VisibilityDistance', df['_c0'].substr(79, 6).cast(IntegerType())) \
-.withColumn('VDQualityCode', df['_c0'].substr(86, 1).cast(IntegerType())) \
-.withColumn('AirTemperature', df['_c0'].substr(88, 5).cast('float') /10) \
-.withColumn('ATQualityCode', df['_c0'].substr(93, 1).cast(IntegerType())) \
-.withColumn('DewPoint', df['_c0'].substr(94, 5).cast('float')) \
-.withColumn('DPQualityCode', df['_c0'].substr(99, 1).cast(IntegerType())) \
-.withColumn('AtmosphericPressure', df['_c0'].substr(100, 5).cast('float')/ 10) \
-.withColumn('APQualityCode', df['_c0'].substr(105, 1).cast(IntegerType())).drop('_c0')
-
-splitDF.printSchema()
-splitDF.show()
-```
-In another cell, run the following code which will give us the average temperature and standard deviation per month, per year.
-
-```python
-avg_df = splitDF.select(month(col('ObservationDate')).alias('Month'),year(col('ObservationDate')).alias('Year'),col('AirTemperature').alias('Temperature'))\
-             .groupBy('Month','Year').agg(avg('Temperature'),stddev('Temperature')).orderBy('Year','Month')
-
-avg_df.show()
+# Stop Spark session
+sparkR.session.stop()
 ```
 
 ### Writing to MinIO
     
 The code shown below write the `splitDF` as a single partioned csv file to a S3 bucket. The `coalesce(1)` option is used to coalesce all partitions into one, by removing it the spark may write the csv as multiple partitions.
 
-```python
-splitDF.write.mode("overwrite").option("header","true").csv("s3a://yourbucketname/hubtest1.csv")
+```R
+# Write Parquet file to local storage
+tryCatch({
+  # Save the DataFrame to a local Parquet file
+  write.df(df, path = "local_output.parquet", source = "parquet", mode = "overwrite")
+  cat("Data successfully written to local Parquet file!\n")
+}, error = function(e) {
+  cat("Error: Unable to write Parquet file to local storage. Exiting...\n")
+  stop(e)
+})
 ```
 
 You can check the contents of the bucket by logging into Minio @ https://system54.rice.iit.edu/minio/ui/browser with your credentials ,which will be stored in `creds.txt` in the home directory.
@@ -296,25 +287,6 @@ Please refer to the below cheat sheet for read and write file options. The direc
 !['cheat-sheet'](images/cheat-sheet.png)
 [IMG source](https://builtin.com/articles/spark-read-csv)
 
-### %%Capture (No-Hup)
-
-If the job submitted takes some time to run we can generally use nohup to redirect the ouput without having us to keep the ssh session alive. As, we are not submitting the job's via terminal there is no way to use no hup directly. To get around this issue, we will use `%%capture` magic to capture the output.
-
-Run the below code in a new cell. `%%capture test` has been added in the first line. 
-
-```python
-%%capture test
-avg_df = splitDF.select(month(col('ObservationDate')).alias('Month'),year(col('ObservationDate')).alias('Year'),col('AirTemperature').alias('Temperature'))\
-             .groupBy('Month','Year').agg(avg('Temperature'),stddev('Temperature')).orderBy('Year','Month')
-
-avg_df.show()
-```
-
-You can close your notebook and re login after the job has completed. To check your output by calling `test` as shown below.
-
-```python
-test()
-```
 
 ### ***Note: You must stop your session before closing the notebook with `sparkR.session.stop()`, if you didn't have any spark jobs running. This helps to free up resources assigned to your job, such that other jobs in the queue can make use of them.***
 ----------------------------
